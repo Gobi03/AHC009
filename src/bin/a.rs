@@ -287,16 +287,6 @@ fn main() {
 
     let dir_list = Direction::list();
 
-    let coms = {
-        use Direction::*;
-        vec![Down, Right, Down, Right, Up, Right, Down, Right, Down, Left]
-    };
-    for _ in 0..0 {
-        for com in &coms {
-            st.update_crt(com, &input);
-        }
-    }
-
     for turn in st.turn..=MAX_TURN {
         // 所在の期待値を係数にして、ゴールへのマンハッタン距離の増減を合算する。
         // 最も良い方向へ向かう
