@@ -285,32 +285,42 @@ fn main() {
         // 最も良い方向へ向かう
 
         let mut evals = vec![0.0; 4];
+
+        let mut targets = vec![];
         for y in 0..SIDE {
             for x in 0..SIDE {
                 let pos = Coord::from_usize_pair((x, y));
                 if st.crt[y][x] > 0.0 && pos != input.goal {
-                    for di in 0..4 {
-                        let dir = dir_list[di];
-                        let eval_p = if input.can_move(&pos, &dir) {
-                            let pos2 = pos.plus(&dir.to_delta());
-                            if *pos2.access_matrix(&input.dist_table)
-                                < *pos.access_matrix(&input.dist_table)
-                            {
-                                st.crt[y][x]
-                            } else {
-                                -st.crt[y][x]
-                            }
-                        } else {
-                            0.0
-                        };
-
-                        evals[di] += eval_p;
-                    }
+                    targets.push(pos);
                 }
             }
         }
 
-        eprintln!("{:?}", evals);
+        targets.sort_by(|a, b| {
+            b.access_matrix(&st.crt)
+                .partial_cmp(a.access_matrix(&st.crt))
+                .unwrap()
+        });
+        let pos = targets[0];
+        // for pos in targets {
+        for di in 0..4 {
+            let dir = dir_list[di];
+            let eval_p = if input.can_move(&pos, &dir) {
+                let pos2 = pos.plus(&dir.to_delta());
+                if *pos2.access_matrix(&input.dist_table) < *pos.access_matrix(&input.dist_table) {
+                    *pos.access_matrix(&st.crt)
+                } else {
+                    -pos.access_matrix(&st.crt)
+                }
+            } else {
+                0.0
+            };
+
+            evals[di] += eval_p;
+        }
+        // }
+
+        // eprintln!("{:?}", evals);
 
         let mut com = dir_list[0];
         let mut eval_p = evals[0];
