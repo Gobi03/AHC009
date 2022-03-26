@@ -134,7 +134,7 @@ impl Input {
         }
     }
 
-    fn can_move(&self, pos: Coord, to_dir: Direction) -> bool {
+    fn can_move(&self, pos: &Coord, to_dir: Direction) -> bool {
         use Direction::*;
 
         let to = pos.plus(&to_dir.to_delta());
@@ -151,57 +151,29 @@ impl Input {
     }
 }
 
-// -> (スコア, , 移動位置の期待値のテーブル)
-pub fn compute_score(input: &Input, out: &[char]) -> (i64, String, Vec<Vec<f64>>) {
-    // 移動位置の期待値のテーブル
-    let mut crt = mat![0.0; N; N];
-    crt[input.s.0][input.s.1] = 1.0;
+// 移動位置の期待値のテーブル を更新
+fn compute_score(crt: &mut Vec<Vec<f64>>, dir: Direction, input: &Input) -> Vec<Vec<f64>> {
+    let mut next = mat![0.0; SIDE; SIDE];
+    // セルごとに移動後の期待値を算出
+    for y in 0..SIDE {
+        for x in 0..SIDE {
+            if crt[y][x] > 0.0 {
+                let pos = Coord::from_usize_pair((x, y));
+                if input.can_move(&pos, dir) {
+                    let pos2 = pos.plus(&dir.to_delta());
 
-    let mut sum = 0.0; // スコア計算用のE[S]の値
-    let mut goal = 0.0;
-
-    // ターン数でループ
-    for t in 0..out.len() {
-        if t >= L {
-            return (0, "too long output".to_owned(), crt);
-        }
-
-        // dは移動コマンドに相当
-        if let Some(d) = DIR.iter().position(|&c| c == out[t]) {
-            let mut next = mat![0.0; N; N];
-            // セルごとに移動後の期待値を算出
-            for i in 0..N {
-                for j in 0..N {
-                    if crt[i][j] > 0.0 {
-                        if input.can_move(i, j, d) {
-                            let i2 = i + DIJ[d].0;
-                            let j2 = j + DIJ[d].1;
-                            next[i2][j2] += crt[i][j] * (1.0 - input.p);
-                            next[i][j] += crt[i][j] * input.p;
-                        } else {
-                            next[i][j] += crt[i][j];
-                        }
-                    }
+                    // 移動先
+                    next[pos2.y as usize][pos2.x as usize] += crt[y][x] * (1.0 - input.p);
+                    // 移動失敗分
+                    next[y][x] += crt[y][x] * input.p;
+                } else {
+                    next[y][x] += crt[y][x];
                 }
             }
-            crt = next;
-            sum += crt[input.t.0][input.t.1] * (2 * L - t) as f64;
-            goal += crt[input.t.0][input.t.1];
-            // ゴールすると固定されるので、除外
-            crt[input.t.0][input.t.1] = 0.0;
-        } else {
-            return (0, format!("illegal char: {}", out[t]), crt);
         }
     }
 
-    // goalは不動なので、ループ終了後に処理
-    crt[input.t.0][input.t.1] = goal;
-
-    (
-        (1e8 * sum / (2 * L) as f64).round() as i64, // スコア
-        String::new(),
-        crt, // 移動位置の期待値のテーブル
-    )
+    next
 }
 
 #[fastout]
@@ -234,4 +206,12 @@ fn main() {
     println!("{}", ans);
 
     eprintln!("{}ms", system_time.elapsed().unwrap().as_millis());
+}
+
+#[macro_export]
+macro_rules! mat {
+	($($e:expr),*) => { Vec::from(vec![$($e),*]) };
+	($($e:expr,)*) => { Vec::from(vec![$($e),*]) };
+	($e:expr; $d:expr) => { Vec::from(vec![$e; $d]) };
+	($e:expr; $d:expr $(; $ds:expr)+) => { Vec::from(vec![mat![$e $(; $ds)*]; $d]) };
 }
