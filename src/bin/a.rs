@@ -291,7 +291,7 @@ fn main() {
         use Direction::*;
         vec![Down, Right, Down, Right, Up, Right, Down, Right, Down, Left]
     };
-    for _ in 0..8 {
+    for _ in 0..0 {
         for com in &coms {
             st.update_crt(com, &input);
         }
