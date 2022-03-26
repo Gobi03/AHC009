@@ -144,28 +144,35 @@ impl Input {
             .map(|v| v.into_iter().map(|a| a == '1').collect())
             .collect();
 
+        let mut input = Self {
+            start,
+            goal,
+            p,
+            yoko,
+            tate,
+            dist_table: vec![],
+        };
+
         let mut dist_table = mat![std::usize::MAX; SIDE; SIDE];
         let mut q = VecDeque::new();
         q.push_back((goal.clone(), 0));
         goal.set_matrix(&mut dist_table, 0);
         while !q.is_empty() {
             let (pos, dist) = q.pop_front().unwrap();
-            for delta in pos.mk_4dir() {
-                if delta.in_field() && *delta.access_matrix(&dist_table) == std::usize::MAX {
-                    delta.set_matrix(&mut dist_table, dist + 1);
-                    q.push_back((delta, dist + 1));
+            for dir in Direction::list() {
+                if input.can_move(&pos, &dir) {
+                    let delta = pos.plus(&dir.to_delta());
+
+                    if delta.in_field() && *delta.access_matrix(&dist_table) == std::usize::MAX {
+                        delta.set_matrix(&mut dist_table, dist + 1);
+                        q.push_back((delta, dist + 1));
+                    }
                 }
             }
         }
 
-        Self {
-            start,
-            goal,
-            p,
-            yoko,
-            tate,
-            dist_table,
-        }
+        input.dist_table = dist_table;
+        input
     }
 
     fn can_move(&self, pos: &Coord, to_dir: &Direction) -> bool {
@@ -280,7 +287,17 @@ fn main() {
 
     let dir_list = Direction::list();
 
-    for turn in 1..=MAX_TURN {
+    let coms = {
+        use Direction::*;
+        vec![Down, Right, Down, Right, Up, Right, Down, Right, Down, Left]
+    };
+    for _ in 0..8 {
+        for com in &coms {
+            st.update_crt(com, &input);
+        }
+    }
+
+    for turn in st.turn..=MAX_TURN {
         // 所在の期待値を係数にして、ゴールへのマンハッタン距離の増減を合算する。
         // 最も良い方向へ向かう
 
@@ -302,16 +319,16 @@ fn main() {
                 .unwrap()
         });
         let pos = targets[0];
-        eprintln!("{:?}", pos);
+        //eprintln!("{:?}", pos);
         // for pos in targets {
         for di in 0..4 {
             let dir = dir_list[di];
             let eval_p = if input.can_move(&pos, &dir) {
                 let pos2 = pos.plus(&dir.to_delta());
                 if *pos2.access_matrix(&input.dist_table) < *pos.access_matrix(&input.dist_table) {
-                    *pos.access_matrix(&st.crt)
+                    *pos.access_matrix(&st.crt) * 10000000.0
                 } else {
-                    -pos.access_matrix(&st.crt)
+                    -pos.access_matrix(&st.crt) * 10000000.0
                 }
             } else {
                 0.0
@@ -321,7 +338,7 @@ fn main() {
         }
         // }
 
-        // eprintln!("{:?}", evals);
+        eprintln!("{:?}", evals);
 
         let mut com = dir_list[0];
         let mut eval_p = evals[0];
