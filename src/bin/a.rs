@@ -89,12 +89,34 @@ impl Coord {
     }
 }
 
+#[allow(dead_code)]
 struct Input {
     start: Coord,
     goal: Coord,
     p: f64,
+    yoko: Vec<Vec<bool>>,
+    tate: Vec<Vec<bool>>,
 }
-impl Input {}
+impl Input {
+    fn new(start: Coord, goal: Coord, p: f64, hs: Vec<Vec<char>>, vs: Vec<Vec<char>>) -> Self {
+        let yoko = hs
+            .into_iter()
+            .map(|h| h.into_iter().map(|a| a == '1').collect())
+            .collect();
+        let tate = vs
+            .into_iter()
+            .map(|v| v.into_iter().map(|a| a == '1').collect())
+            .collect();
+
+        Self {
+            start,
+            goal,
+            p,
+            yoko,
+            tate,
+        }
+    }
+}
 
 #[fastout]
 fn main() {
@@ -116,9 +138,11 @@ fn main() {
     let sp = Coord::from_usize_pair((sj, si));
     let gp = Coord::from_usize_pair((gj, gi));
 
+    let input = Input::new(sp, gp, p, h, v);
+
     let mut ans = "".to_string();
-    for _ in 0..50 {
-        ans = format!("{}{}", ans, "UDLR");
+    for _ in 0..20 {
+        ans = format!("{}{}", ans, "DRDRURDRDL");
     }
 
     println!("{}", ans);
