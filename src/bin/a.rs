@@ -135,7 +135,7 @@ impl Input {
         }
     }
 
-    fn can_move(&self, pos: &Coord, to_dir: Direction) -> bool {
+    fn can_move(&self, pos: &Coord, to_dir: &Direction) -> bool {
         use Direction::*;
 
         let to = pos.plus(&to_dir.to_delta());
@@ -144,19 +144,21 @@ impl Input {
             return false;
         }
         match to_dir {
-            Left => self.yoko[pos.y as usize][pos.x as usize - 1],
-            Right => self.yoko[pos.y as usize][pos.x as usize],
-            Up => self.tate[pos.y as usize - 1][pos.x as usize],
-            Down => self.tate[pos.y as usize][pos.x as usize],
+            Left => !self.yoko[pos.y as usize][pos.x as usize - 1],
+            Right => !self.yoko[pos.y as usize][pos.x as usize],
+            Up => !self.tate[pos.y as usize - 1][pos.x as usize],
+            Down => !self.tate[pos.y as usize][pos.x as usize],
         }
     }
 }
 
+#[derive(Debug, Clone)]
 struct State {
     crt: Vec<Vec<f64>>, // 移動位置の期待値のテーブル
     turn: usize,
     sum: f64,
     goal_expected: f64,
+    ans: Vec<Direction>,
 }
 impl State {
     fn new(input: &Input) -> Self {
@@ -164,15 +166,16 @@ impl State {
         input.start.set_matrix(&mut crt, 1.0);
 
         Self {
-            crt: mat![0.0; SIDE; SIDE],
+            crt,
             turn: 1,
             sum: 0.0,
             goal_expected: 0.0,
+            ans: Vec::with_capacity(MAX_TURN),
         }
     }
 
     // 移動位置の期待値のテーブル を更新
-    fn update_crt(&mut self, dir: Direction, input: &Input) {
+    fn update_crt(&mut self, dir: &Direction, input: &Input) {
         input.goal.set_matrix(&mut self.crt, 0.0);
 
         let mut next = mat![0.0; SIDE; SIDE];
@@ -201,7 +204,8 @@ impl State {
         input.goal.set_matrix(&mut next, self.goal_expected);
 
         self.turn += 1;
-        self.crt = next
+        self.crt = next;
+        self.ans.push(dir.clone());
     }
 
     fn compute_score(&self) -> i64 {
@@ -233,12 +237,20 @@ fn main() {
 
     let mut st = State::new(&input);
 
-    let mut ans = "".to_string();
+    let coms = {
+        use Direction::*;
+        vec![Down, Right, Down, Right, Up, Right, Down, Right, Down, Left]
+    };
     for _ in 0..20 {
-        ans = format!("{}{}", ans, "DRDRURDRDL");
+        for com in &coms {
+            st.update_crt(com, &input);
+        }
     }
 
-    println!("{}", ans);
+    // eprintln!("{:?}", st);
+    eprintln!("{}", st.compute_score());
+
+    // println!("{}", ans);
 
     eprintln!("{}ms", system_time.elapsed().unwrap().as_millis());
 }
