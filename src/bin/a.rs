@@ -118,12 +118,15 @@ impl Coord {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
 struct Input {
     start: Coord,
     goal: Coord,
     p: f64,
     yoko: Vec<Vec<bool>>,
     tate: Vec<Vec<bool>>,
+
+    dist_table: Vec<Vec<usize>>,
 }
 impl Input {
     fn new(start: Coord, goal: Coord, p: f64, hs: Vec<Vec<char>>, vs: Vec<Vec<char>>) -> Self {
@@ -136,12 +139,27 @@ impl Input {
             .map(|v| v.into_iter().map(|a| a == '1').collect())
             .collect();
 
+        let mut dist_table = mat![usize::MAX; SIDE; SIDE];
+        let mut q = VecDeque::new();
+        q.push_back((goal.clone(), 0));
+        goal.set_matrix(&mut dist_table, 0);
+        while !q.is_empty() {
+            let (pos, dist) = q.pop_front().unwrap();
+            for delta in pos.mk_4dir() {
+                if delta.in_field() && *delta.access_matrix(&dist_table) == usize::MAX {
+                    delta.set_matrix(&mut dist_table, dist + 1);
+                    q.push_back((delta, dist + 1));
+                }
+            }
+        }
+
         Self {
             start,
             goal,
             p,
             yoko,
             tate,
+            dist_table,
         }
     }
 
@@ -251,6 +269,7 @@ fn main() {
     let gp = Coord::from_usize_pair((gj, gi));
 
     let input = Input::new(sp, gp, p, h, v);
+    eprintln!("{:?}", input);
 
     let mut st = State::new(&input);
 
