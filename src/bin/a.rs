@@ -19,6 +19,7 @@ use std::time::SystemTime;
 
 #[allow(dead_code)]
 const SIDE: usize = 20;
+const MAX_TURN: usize = 200;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Direction {
@@ -151,29 +152,61 @@ impl Input {
     }
 }
 
-// 移動位置の期待値のテーブル を更新
-fn compute_score(crt: &mut Vec<Vec<f64>>, dir: Direction, input: &Input) -> Vec<Vec<f64>> {
-    let mut next = mat![0.0; SIDE; SIDE];
-    // セルごとに移動後の期待値を算出
-    for y in 0..SIDE {
-        for x in 0..SIDE {
-            if crt[y][x] > 0.0 {
-                let pos = Coord::from_usize_pair((x, y));
-                if input.can_move(&pos, dir) {
-                    let pos2 = pos.plus(&dir.to_delta());
+struct State {
+    crt: Vec<Vec<f64>>, // 移動位置の期待値のテーブル
+    turn: usize,
+    sum: f64,
+    goal_expected: f64,
+}
+impl State {
+    fn new(input: &Input) -> Self {
+        let mut crt = mat![0.0; SIDE; SIDE];
+        input.start.set_matrix(&mut crt, 1.0);
 
-                    // 移動先
-                    next[pos2.y as usize][pos2.x as usize] += crt[y][x] * (1.0 - input.p);
-                    // 移動失敗分
-                    next[y][x] += crt[y][x] * input.p;
-                } else {
-                    next[y][x] += crt[y][x];
-                }
-            }
+        Self {
+            crt: mat![0.0; SIDE; SIDE],
+            turn: 1,
+            sum: 0.0,
+            goal_expected: 0.0,
         }
     }
 
-    next
+    // 移動位置の期待値のテーブル を更新
+    fn update_crt(&mut self, dir: Direction, input: &Input) {
+        input.goal.set_matrix(&mut self.crt, 0.0);
+
+        let mut next = mat![0.0; SIDE; SIDE];
+        // セルごとに移動後の期待値を算出
+        for y in 0..SIDE {
+            for x in 0..SIDE {
+                if self.crt[y][x] > 0.0 {
+                    let pos = Coord::from_usize_pair((x, y));
+                    if input.can_move(&pos, dir) {
+                        let pos2 = pos.plus(&dir.to_delta());
+
+                        // 移動先
+                        next[pos2.y as usize][pos2.x as usize] += self.crt[y][x] * (1.0 - input.p);
+                        // 移動失敗分
+                        next[y][x] += self.crt[y][x] * input.p;
+                    } else {
+                        next[y][x] += self.crt[y][x];
+                    }
+                }
+            }
+        }
+
+        self.sum += input.goal.access_matrix(&next) * (401 - self.turn) as f64;
+
+        self.goal_expected += input.goal.access_matrix(&next);
+        input.goal.set_matrix(&mut next, self.goal_expected);
+
+        self.turn += 1;
+        self.crt = next
+    }
+
+    fn compute_score(&self) -> i64 {
+        (1e8 * self.sum / (2 * MAX_TURN) as f64).round() as i64
+    }
 }
 
 #[fastout]
@@ -197,6 +230,8 @@ fn main() {
     let gp = Coord::from_usize_pair((gj, gi));
 
     let input = Input::new(sp, gp, p, h, v);
+
+    let mut st = State::new(&input);
 
     let mut ans = "".to_string();
     for _ in 0..20 {
