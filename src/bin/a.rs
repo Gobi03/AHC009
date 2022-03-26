@@ -20,7 +20,7 @@ use std::time::SystemTime;
 #[allow(dead_code)]
 const SIDE: usize = 20;
 const MAX_TURN: usize = 200;
-const BEAM_WIDTH: usize = 350;
+const BEAM_WIDTH: usize = 400;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Direction {
@@ -264,7 +264,9 @@ impl State {
         let mut score = 0.0;
         for y in 0..SIDE {
             for x in 0..SIDE {
-                score += self.crt[y][x] * input.dist_table[y][x] as f64;
+                if self.crt[y][x] > 0.0 && input.dist_table[y][x] > 0 {
+                    score += self.crt[y][x] * input.dist_table[y][x] as f64;
+                }
             }
         }
         score
@@ -294,11 +296,12 @@ fn main() {
     let input = Input::new(sp, gp, p, h, v);
     // eprintln!("{:?}", input);
 
-    let mut init_st = State::new(&input);
+    let init_st = State::new(&input);
 
     let dir_list = Direction::list();
 
-    let mut beam_q = vec![(init_st.clone(), init_st.eval(&input))];
+    let init_score = init_st.eval(&input);
+    let mut beam_q = vec![(init_st, init_score)];
     for turn in 1..=MAX_TURN {
         let mut next_beam_q = Vec::with_capacity(BEAM_WIDTH);
 
