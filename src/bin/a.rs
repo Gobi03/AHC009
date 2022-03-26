@@ -47,6 +47,11 @@ impl Direction {
             Down => 'D',
         }
     }
+
+    fn list() -> Vec<Self> {
+        use Direction::*;
+        vec![Left, Up, Right, Down]
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -269,15 +274,53 @@ fn main() {
     let gp = Coord::from_usize_pair((gj, gi));
 
     let input = Input::new(sp, gp, p, h, v);
-    eprintln!("{:?}", input);
+    // eprintln!("{:?}", input);
 
     let mut st = State::new(&input);
+
+    let dir_list = Direction::list();
 
     for turn in 1..=MAX_TURN {
         // 所在の期待値を係数にして、ゴールへのマンハッタン距離の増減を合算する。
         // 最も良い方向へ向かう
 
-        let com = Direction::Down;
+        let mut evals = vec![0.0; 4];
+        for y in 0..SIDE {
+            for x in 0..SIDE {
+                let pos = Coord::from_usize_pair((x, y));
+                if st.crt[y][x] > 0.0 && pos != input.goal {
+                    for di in 0..4 {
+                        let dir = dir_list[di];
+                        let eval_p = if input.can_move(&pos, &dir) {
+                            let pos2 = pos.plus(&dir.to_delta());
+                            if *pos2.access_matrix(&input.dist_table)
+                                < *pos.access_matrix(&input.dist_table)
+                            {
+                                st.crt[y][x]
+                            } else {
+                                -st.crt[y][x]
+                            }
+                        } else {
+                            0.0
+                        };
+
+                        evals[di] += eval_p;
+                    }
+                }
+            }
+        }
+
+        eprintln!("{:?}", evals);
+
+        let mut com = dir_list[0];
+        let mut eval_p = evals[0];
+        for i in 1..4 {
+            if eval_p < evals[i] {
+                eval_p = evals[i];
+                com = dir_list[i];
+            }
+        }
+
         st.update_crt(&com, &input);
     }
 
