@@ -318,27 +318,29 @@ fn main() {
                 .partial_cmp(a.access_matrix(&st.crt))
                 .unwrap()
         });
-        let pos = targets[0];
+        // let pos = targets[0];
         //eprintln!("{:?}", pos);
-        // for pos in targets {
-        for di in 0..4 {
-            let dir = dir_list[di];
-            let eval_p = if input.can_move(&pos, &dir) {
-                let pos2 = pos.plus(&dir.to_delta());
-                if *pos2.access_matrix(&input.dist_table) < *pos.access_matrix(&input.dist_table) {
-                    *pos.access_matrix(&st.crt) * 10000000.0
+        for pos in targets {
+            for di in 0..4 {
+                let dir = dir_list[di];
+                let eval_p = if input.can_move(&pos, &dir) {
+                    let pos2 = pos.plus(&dir.to_delta());
+                    if *pos2.access_matrix(&input.dist_table)
+                        < *pos.access_matrix(&input.dist_table)
+                    {
+                        *pos.access_matrix(&st.crt) * 10000000.0
+                    } else {
+                        -pos.access_matrix(&st.crt) * 10000000.0
+                    }
                 } else {
-                    -pos.access_matrix(&st.crt) * 10000000.0
-                }
-            } else {
-                0.0
-            };
+                    0.0
+                };
 
-            evals[di] += eval_p;
+                evals[di] += eval_p;
+            }
         }
-        // }
 
-        eprintln!("{:?}", evals);
+        // eprintln!("{:?}", evals);
 
         let mut com = dir_list[0];
         let mut eval_p = evals[0];
@@ -353,7 +355,7 @@ fn main() {
     }
 
     // eprintln!("{:?}", st);
-    eprintln!("{}", st.compute_score());
+    // eprintln!("{}", st.compute_score());
 
     st.print_ans();
 
