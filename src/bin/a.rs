@@ -18,7 +18,7 @@ use std::io::Write;
 use std::time::SystemTime;
 
 #[allow(dead_code)]
-const MOD: usize = 1e9 as usize + 7;
+const SIDE: usize = 20;
 
 struct Input {}
 impl Input {}
@@ -29,11 +29,16 @@ fn main() {
     let mut _rng = thread_rng();
 
     input! {
-        // n: usize,
-        // v: [isize; n],
+        si: usize,
+        sj: usize,
+        gi: usize,
+        gj: usize,
+        p: f64,
+        h: [Chars; SIDE],
+        v: [Chars; SIDE - 1],
     }
 
-    let ans = 42;
+    let ans = "";
 
     println!("{}", ans);
 
