@@ -21,11 +21,28 @@ use std::time::SystemTime;
 const SIDE: usize = 20;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Direction {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+impl Direction {
+    fn to_delta(&self) -> Coord {
+        match *self {
+            Self::Left => Coord::new((-1, 0)),
+            Self::Right => Coord::new((1, 0)),
+            Self::Up => Coord::new((0, -1)),
+            Self::Down => Coord::new((0, 1)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Coord {
     x: isize,
     y: isize,
 }
-
 #[allow(dead_code)]
 impl Coord {
     fn new(p: (isize, isize)) -> Self {
@@ -116,6 +133,75 @@ impl Input {
             tate,
         }
     }
+
+    fn can_move(&self, pos: Coord, to_dir: Direction) -> bool {
+        use Direction::*;
+
+        let to = pos.plus(&to_dir.to_delta());
+
+        if !to.in_field() {
+            return false;
+        }
+        match to_dir {
+            Left => self.yoko[pos.y as usize][pos.x as usize - 1],
+            Right => self.yoko[pos.y as usize][pos.x as usize],
+            Up => self.tate[pos.y as usize - 1][pos.x as usize],
+            Down => self.tate[pos.y as usize][pos.x as usize],
+        }
+    }
+}
+
+// -> (スコア, , 移動位置の期待値のテーブル)
+pub fn compute_score(input: &Input, out: &[char]) -> (i64, String, Vec<Vec<f64>>) {
+    // 移動位置の期待値のテーブル
+    let mut crt = mat![0.0; N; N];
+    crt[input.s.0][input.s.1] = 1.0;
+
+    let mut sum = 0.0; // スコア計算用のE[S]の値
+    let mut goal = 0.0;
+
+    // ターン数でループ
+    for t in 0..out.len() {
+        if t >= L {
+            return (0, "too long output".to_owned(), crt);
+        }
+
+        // dは移動コマンドに相当
+        if let Some(d) = DIR.iter().position(|&c| c == out[t]) {
+            let mut next = mat![0.0; N; N];
+            // セルごとに移動後の期待値を算出
+            for i in 0..N {
+                for j in 0..N {
+                    if crt[i][j] > 0.0 {
+                        if input.can_move(i, j, d) {
+                            let i2 = i + DIJ[d].0;
+                            let j2 = j + DIJ[d].1;
+                            next[i2][j2] += crt[i][j] * (1.0 - input.p);
+                            next[i][j] += crt[i][j] * input.p;
+                        } else {
+                            next[i][j] += crt[i][j];
+                        }
+                    }
+                }
+            }
+            crt = next;
+            sum += crt[input.t.0][input.t.1] * (2 * L - t) as f64;
+            goal += crt[input.t.0][input.t.1];
+            // ゴールすると固定されるので、除外
+            crt[input.t.0][input.t.1] = 0.0;
+        } else {
+            return (0, format!("illegal char: {}", out[t]), crt);
+        }
+    }
+
+    // goalは不動なので、ループ終了後に処理
+    crt[input.t.0][input.t.1] = goal;
+
+    (
+        (1e8 * sum / (2 * L) as f64).round() as i64, // スコア
+        String::new(),
+        crt, // 移動位置の期待値のテーブル
+    )
 }
 
 #[fastout]
