@@ -37,6 +37,16 @@ impl Direction {
             Self::Down => Coord::new((0, 1)),
         }
     }
+
+    fn to_char(&self) -> char {
+        use Direction::*;
+        match self {
+            Left => 'L',
+            Right => 'R',
+            Up => 'U',
+            Down => 'D',
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -211,6 +221,13 @@ impl State {
     fn compute_score(&self) -> i64 {
         (1e8 * self.sum / (2 * MAX_TURN) as f64).round() as i64
     }
+
+    fn print_ans(&self) {
+        println!(
+            "{}",
+            self.ans.iter().map(|dir| dir.to_char()).collect::<String>()
+        );
+    }
 }
 
 #[fastout]
@@ -250,7 +267,7 @@ fn main() {
     // eprintln!("{:?}", st);
     eprintln!("{}", st.compute_score());
 
-    // println!("{}", ans);
+    st.print_ans();
 
     eprintln!("{}ms", system_time.elapsed().unwrap().as_millis());
 }
