@@ -144,14 +144,14 @@ impl Input {
             .map(|v| v.into_iter().map(|a| a == '1').collect())
             .collect();
 
-        let mut dist_table = mat![usize::MAX; SIDE; SIDE];
+        let mut dist_table = mat![std::usize::MAX; SIDE; SIDE];
         let mut q = VecDeque::new();
         q.push_back((goal.clone(), 0));
         goal.set_matrix(&mut dist_table, 0);
         while !q.is_empty() {
             let (pos, dist) = q.pop_front().unwrap();
             for delta in pos.mk_4dir() {
-                if delta.in_field() && *delta.access_matrix(&dist_table) == usize::MAX {
+                if delta.in_field() && *delta.access_matrix(&dist_table) == std::usize::MAX {
                     delta.set_matrix(&mut dist_table, dist + 1);
                     q.push_back((delta, dist + 1));
                 }
@@ -302,6 +302,7 @@ fn main() {
                 .unwrap()
         });
         let pos = targets[0];
+        eprintln!("{:?}", pos);
         // for pos in targets {
         for di in 0..4 {
             let dir = dir_list[di];
