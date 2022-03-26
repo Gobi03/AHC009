@@ -20,6 +20,7 @@ use std::time::SystemTime;
 #[allow(dead_code)]
 const SIDE: usize = 20;
 const MAX_TURN: usize = 200;
+const BEAM_WIDTH: usize = 350;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Direction {
@@ -258,6 +259,16 @@ impl State {
             self.ans.iter().map(|dir| dir.to_char()).collect::<String>()
         );
     }
+
+    fn eval(&self, input: &Input) -> f64 {
+        let mut score = 0.0;
+        for y in 0..SIDE {
+            for x in 0..SIDE {
+                score += self.crt[y][x] * input.dist_table[y][x] as f64;
+            }
+        }
+        score
+    }
 }
 
 #[fastout]
@@ -283,71 +294,34 @@ fn main() {
     let input = Input::new(sp, gp, p, h, v);
     // eprintln!("{:?}", input);
 
-    let mut st = State::new(&input);
+    let mut init_st = State::new(&input);
 
     let dir_list = Direction::list();
 
-    for turn in st.turn..=MAX_TURN {
-        // 所在の期待値を係数にして、ゴールへのマンハッタン距離の増減を合算する。
-        // 最も良い方向へ向かう
+    let mut beam_q = vec![(init_st.clone(), init_st.eval(&input))];
+    for turn in 1..=MAX_TURN {
+        let mut next_beam_q = Vec::with_capacity(BEAM_WIDTH);
 
-        let mut evals = vec![0.0; 4];
+        for b in 0..BEAM_WIDTH.min(beam_q.len()) {
+            let (st, _) = &beam_q[b];
 
-        let mut targets = vec![];
-        for y in 0..SIDE {
-            for x in 0..SIDE {
-                let pos = Coord::from_usize_pair((x, y));
-                if st.crt[y][x] > 0.0 && pos != input.goal {
-                    targets.push(pos);
-                }
+            for dir in &dir_list {
+                let mut next_st = st.clone();
+                next_st.update_crt(&dir, &input);
+                let score = next_st.eval(&input);
+
+                next_beam_q.push((next_st, score));
             }
         }
 
-        targets.sort_by(|a, b| {
-            b.access_matrix(&st.crt)
-                .partial_cmp(a.access_matrix(&st.crt))
-                .unwrap()
-        });
-        // let pos = targets[0];
-        //eprintln!("{:?}", pos);
-        for pos in targets {
-            for di in 0..4 {
-                let dir = dir_list[di];
-                let eval_p = if input.can_move(&pos, &dir) {
-                    let pos2 = pos.plus(&dir.to_delta());
-                    if *pos2.access_matrix(&input.dist_table)
-                        < *pos.access_matrix(&input.dist_table)
-                    {
-                        *pos.access_matrix(&st.crt) * 10000000.0
-                    } else {
-                        -pos.access_matrix(&st.crt) * 10000000.0
-                    }
-                } else {
-                    0.0
-                };
-
-                evals[di] += eval_p;
-            }
-        }
-
-        // eprintln!("{:?}", evals);
-
-        let mut com = dir_list[0];
-        let mut eval_p = evals[0];
-        for i in 1..4 {
-            if eval_p < evals[i] {
-                eval_p = evals[i];
-                com = dir_list[i];
-            }
-        }
-
-        st.update_crt(&com, &input);
+        next_beam_q.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        beam_q = next_beam_q;
     }
 
     // eprintln!("{:?}", st);
     // eprintln!("{}", st.compute_score());
 
-    st.print_ans();
+    beam_q[0].0.print_ans();
 
     eprintln!("{}ms", system_time.elapsed().unwrap().as_millis());
 }

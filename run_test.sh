@@ -2,7 +2,7 @@
 
 set -eu
 
-test_num="0001"
+test_num="0000"
 
 cargo run --release --bin a < "tools/in/${test_num}.txt" > "tools/out/${test_num}.txt"
 cat "tools/out/${test_num}.txt" | pbcopy
